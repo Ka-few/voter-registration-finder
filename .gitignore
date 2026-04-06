@@ -20,3 +20,23 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Database / Vector stores
+data/
+
+# OS Files
+.DS_Store
+Thumbs.db

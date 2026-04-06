@@ -1,0 +1,6 @@
+playwright
+beautifulsoup4
+sentence-transformers
+chromadb
+httpx
+python-dotenv
