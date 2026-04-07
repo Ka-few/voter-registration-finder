@@ -1,15 +1,12 @@
 import os
-from langchain_core.messages import SystemMessage
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-from langchain_anthropic import ChatAnthropic
-from langchain.memory import ConversationBufferWindowMemory
-from langchain_community.chat_message_histories import RedisChatMessageHistory
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
 from dotenv import load_dotenv
 
-from tools import find_centers, get_registration_dates, get_center_details, send_map_link
-
 load_dotenv(dotenv_path="../.env")
+
+from tools import find_centers, get_registration_dates, get_center_details, send_map_link
 
 SYSTEM_PROMPT = """You are the IEBC Registration Assistant, an official AI helper for Kenyan citizens seeking voter registration centers. You communicate via WhatsApp and SMS.
 
@@ -36,48 +33,39 @@ CONSTRAINTS
 - Do NOT discuss non-electoral topics.
 - Do NOT store or repeat personal identification information (ID numbers, phone numbers).
 - If data is unavailable, say: "I'm unable to retrieve that information right now. Please visit iebc.or.ke or call 1500."
-- If the user sends an ambiguous location, ask one clarifying question before searching."""
+- If the user sends an ambiguous location, ask one clarifying question before searching.
+"""
 
 tools = [find_centers, get_registration_dates, get_center_details, send_map_link]
-llm = ChatAnthropic(model="claude-3-7-sonnet-20250219", temperature=0)
 
-prompt = ChatPromptTemplate.from_messages([
-    ("system", SYSTEM_PROMPT),
-    MessagesPlaceholder(variable_name="chat_history"),
-    ("user", "{input}"),
-    MessagesPlaceholder(variable_name="agent_scratchpad"),
-])
+# ✅ Switch to Gemini (Using Lite model for better free-tier quota)
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash-lite",
+    temperature=0
+)
 
-agent = create_tool_calling_agent(llm, tools, prompt)
+# Memory for maintaining conversation state locally
+memory = MemorySaver()
 
-def get_agent_executor(phone_number: str):
-    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
-    message_history = RedisChatMessageHistory(
-        url=redis_url,
-        ttl=3600,
-        session_id=f"session:{phone_number}"
-    )
-    
-    memory = ConversationBufferWindowMemory(
-        memory_key="chat_history",
-        chat_memory=message_history,
-        return_messages=True,
-        k=6
-    )
-    
-    executor = AgentExecutor(
-        agent=agent,
-        tools=tools,
-        memory=memory,
-        verbose=True
-    )
-    return executor
+# Create agent
+agent_executor = create_react_agent(
+    model=llm,
+    tools=tools,
+    prompt=SYSTEM_PROMPT,
+    checkpointer=memory
+)
 
 def invoke_agent(phone_number: str, message: str) -> str:
-    executor = get_agent_executor(phone_number)
+    config = {"configurable": {"thread_id": phone_number}}
     try:
-        result = executor.invoke({"input": message})
-        return result["output"]
+        messages = agent_executor.invoke(
+            {"messages": [("user", message)]},
+            config=config
+        )
+        content = messages["messages"][-1].content
+        if isinstance(content, list):
+            return "".join([part.get("text", "") for part in content if isinstance(part, dict) and "text" in part])
+        return str(content)
     except Exception as e:
         print(f"Agent error: {e}")
         return "I'm unable to retrieve that information right now. Please visit iebc.or.ke or call 1500."

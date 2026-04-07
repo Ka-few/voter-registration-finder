@@ -1,4 +1,4 @@
-from agent import invoke_agent
+from bot import invoke_agent
 
 if __name__ == "__main__":
     print("Welcome to IEBC Registration Assistant CLI")

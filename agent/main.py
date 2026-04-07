@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
 import os
-from agent import invoke_agent
+from bot import invoke_agent
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path="../.env")

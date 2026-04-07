@@ -2,7 +2,10 @@ import os
 import uuid
 import datetime
 import chromadb
-from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+load_dotenv(dotenv_path="../.env")
 
 # Initialize Chroma client
 CHROMA_PATH = os.environ.get("CHROMA_PATH", "../data/chroma")
@@ -15,7 +18,8 @@ try:
 except:
     collection = chroma_client.create_collection(name=collection_name)
 
-model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+# ✅ Use Google Gemini Embeddings (Must match agent/tools.py)
+embeddings_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
 def upsert_centers(centers_data: list):
     if not centers_data:
@@ -36,7 +40,7 @@ def upsert_centers(centers_data: list):
         c_filtered = {k: (str(v) if v is not None else "") for k, v in c.items()}
         metadatas.append(c_filtered)
         
-    embeddings = model.encode(documents).tolist()
+    embeddings = embeddings_model.embed_documents(documents)
     
     collection.upsert(
         ids=ids,

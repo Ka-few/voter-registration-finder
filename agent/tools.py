@@ -1,7 +1,10 @@
 from langchain.tools import tool
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path="../.env")
 import os
 import chromadb
-from sentence_transformers import SentenceTransformer
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 # Setup Chroma DB
 CHROMA_PATH = os.environ.get("CHROMA_PATH", "../data/chroma")
@@ -11,7 +14,8 @@ try:
 except:
     collection = chroma_client.create_collection(name="iebc_centers")
 
-model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+# ✅ Switch to Google Gemini Embeddings
+embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
 @tool
 def find_centers(location: str, county: str = '') -> str:
@@ -19,7 +23,7 @@ def find_centers(location: str, county: str = '') -> str:
     Returns the top 3 results formatted as a numbered list. 
     Each result must include: center name, sub-county, operating hours, and approximate distance if GPS is available."""
     query_text = f"{location} {county}".strip()
-    query_emb = model.encode([query_text]).tolist()
+    query_emb = embeddings.embed_query(query_text)
     
     results = collection.query(
         query_embeddings=query_emb,

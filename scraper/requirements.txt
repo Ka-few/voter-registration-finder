@@ -1,6 +1,6 @@
 playwright
 beautifulsoup4
-sentence-transformers
+langchain-google-genai
 chromadb
 httpx
 python-dotenv
