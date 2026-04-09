@@ -40,7 +40,7 @@ tools = [find_centers, get_registration_dates, get_center_details, send_map_link
 
 # ✅ Switch to Gemini (Using Lite model for better free-tier quota)
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash-lite",
+    model="gemini-flash-lite-latest",
     temperature=0
 )
 
